@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scenario name="Simple SauceDemo Login Test">
+  <given>I navigate to "https://www.saucedemo.com/"</given>
+  <when>I enter "standard_user" in the username field</when>
+  <when>I enter "secret_sauce" in the password field</when>
+  <when>I click the login button</when>
+  <then>I should see the products page with inventory items</then>
+</scenario>

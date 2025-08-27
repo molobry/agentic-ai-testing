@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scenario name="SauceDemo Login and Purchase Test">
+  <given>I navigate to "https://www.saucedemo.com/"</given>
+  <when>I enter "standard_user" in the username field</when>
+  <when>I enter "secret_sauce" in the password field</when>
+  <when>I click the login button</when>
+  <then>I should see the products page</then>
+  <when>I add "Sauce Labs Backpack" to cart</when>
+  <when>I click the cart icon</when>
+  <when>I proceed to checkout</when>
+  <when>I enter "John" in the first name field</when>
+  <when>I enter "Doe" in the last name field</when>
+  <when>I enter "12345" in the postal code field</when>
+  <when>I click continue button</when>
+  <when>I click finish button</when>
+  <then>I should see order confirmation</then>
+</scenario>
