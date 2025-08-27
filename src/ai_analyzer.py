@@ -27,14 +27,49 @@ class AIAnalyzer:
         if self.provider == "azure_openai":
             try:
                 import openai
-                self.client = openai.AzureOpenAI(
-                    api_key=api_key or os.getenv('AZURE_OPENAI_API_KEY'),
-                    azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
-                    api_version=os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-01')
-                )
+                
+                # Check OpenAI version for compatibility
+                openai_version = openai.__version__
+                print(f"🔧 OpenAI version: {openai_version}")
+                
+                # Initialize Azure OpenAI client based on version
+                try:
+                    # Try the newer v1+ API
+                    azure_config = {
+                        "api_key": api_key or os.getenv('AZURE_OPENAI_API_KEY'),
+                        "azure_endpoint": os.getenv('AZURE_OPENAI_ENDPOINT'),
+                        "api_version": os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-01')
+                    }
+                    
+                    # Remove None values to avoid parameter issues
+                    azure_config = {k: v for k, v in azure_config.items() if v is not None}
+                    
+                    self.client = openai.AzureOpenAI(**azure_config)
+                    print("✅ Azure OpenAI v1+ client initialized successfully")
+                    
+                except Exception as v1_error:
+                    print(f"⚠️  V1 API failed: {v1_error}")
+                    # Try legacy v0.x API approach
+                    try:
+                        openai.api_type = "azure"
+                        openai.api_key = api_key or os.getenv('AZURE_OPENAI_API_KEY')
+                        openai.api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
+                        openai.api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-01')
+                        self.client = openai  # Use module directly for legacy
+                        print("✅ Azure OpenAI legacy client initialized successfully")
+                    except Exception as legacy_error:
+                        print(f"⚠️  Legacy API also failed: {legacy_error}")
+                        raise Exception("Both v1+ and legacy Azure OpenAI initialization failed")
+                
                 self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-35-turbo')
-            except ImportError:
-                print("⚠️  openai package not installed. Install with: pip install openai")
+                
+            except Exception as e:
+                print(f"⚠️  Failed to initialize Azure OpenAI client: {e}")
+                print("⚠️  Possible issues:")
+                print("   - Check OpenAI package version (pip install --upgrade openai)")
+                print("   - Verify Azure OpenAI credentials in .env file")
+                print("   - Check corporate network/proxy settings")
+                print("⚠️  Falling back to basic element detection")
                 self.provider = None
         elif self.provider == "anthropic":
             try:
@@ -270,16 +305,32 @@ class AIAnalyzer:
         try:
             if self.provider == "azure_openai":
                 print("🧠 Using Azure OpenAI (in-house) for element analysis")
-                response = self.client.chat.completions.create(
-                    model=self.deployment_name,
-                    messages=[
-                        {"role": "system", "content": "You are an expert at analyzing web page elements for UI automation. Return only valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=1000,
-                    temperature=0.1
-                )
-                ai_response = response.choices[0].message.content
+                
+                try:
+                    # Try v1+ API call
+                    response = self.client.chat.completions.create(
+                        model=self.deployment_name,
+                        messages=[
+                            {"role": "system", "content": "You are an expert at analyzing web page elements for UI automation. Return only valid JSON."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=1000,
+                        temperature=0.1
+                    )
+                    ai_response = response.choices[0].message.content
+                    
+                except AttributeError:
+                    # Try legacy API call
+                    response = self.client.ChatCompletion.create(
+                        engine=self.deployment_name,
+                        messages=[
+                            {"role": "system", "content": "You are an expert at analyzing web page elements for UI automation. Return only valid JSON."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=1000,
+                        temperature=0.1
+                    )
+                    ai_response = response.choices[0].message.content
                 
             elif self.provider == "anthropic":
                 print("🧠 Using Anthropic AI for element analysis")
